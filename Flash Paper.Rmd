@@ -1,0 +1,402 @@
+---
+title: "DS5110 Flash Paper"
+author: "Parth Shah"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing Data sets and loading libraries
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+
+matches <- read_csv("matches.csv", show_col_types = FALSE)
+deliveries <- read_csv("deliveries.csv", show_col_types = FALSE)
+```
+
+Source: https://www.kaggle.com/datasets/nowke9/ipldata
+
+The Indian Premier League (IPL) is a T-20 cricket tournament for men hosted in India and overseen by the Board of Cricket Control of India (BCCI). It consists of 8 teams that face off in a league format, followed by a knockout stage. Some previous teams, such as Deccan Chargers, Kochi Tuskers, Gujrat Lions, and Pune Warriors, are no longer active in the tournament. Although two teams were banned for two seasons, they have since returned to the tournament. This analysis uses data from 2008 to 2019, and all findings are based on that data. The dataset includes information about IPL matches and deliveries, with the "matches.csv" file providing details about each match such as the match ID, season, location, date, participating teams, toss winner, result, and winning team. The "deliveries.csv" file includes information about each delivery in a match, including the match ID, inning, batting and bowling teams, batsman and bowler, and the runs scored.
+
+Variables:
+
+  matches.csv:
+
+    -id: Unique match ID
+    -season: Season of the IPL tournament
+    -city: City where the match was played
+    -date: Date of the match
+    -team1: Name of team 1
+    -team2: Name of team 2
+    -toss_winner: Team that won the toss
+    -toss_decision: Toss decision (bat or field)
+    -result: Result of the match
+    -dl_applied: Duckworth-Lewis method applied or not
+    -winner: Winning team
+    -win_by_runs: Number of runs by which the team won
+    -win_by_wickets: Number of wickets by which the team won
+    -player_of_match: Player of the match
+    -venue: Venue where the match was played
+    -umpire1: Name of umpire 1
+    -umpire2: Name of umpire 2
+    -umpire3: Name of umpire 3
+  
+  deliveries.csv:
+
+    -match_id: Match ID
+    -inning: Inning of the match
+    -batting_team: Batting team
+    -bowling_team: Bowling team
+    -over: Over number
+    -ball: Ball number
+    -batsman: Batsman who faced
+    -non_striker: Non-striker batsman
+    -bowler: Bowler who bowled the delivery
+    -is_super_over: Whether the delivery was in a super over or not
+    -wide_runs: Number of wide runs
+    -bye_runs: Number of bye runs
+    -legbye_runs: Number of legbye runs
+    -noball_runs: Number of no ball runs
+    -penalty_runs: Number of penalty runs
+    -batsman_runs: Number of runs scored by the batsman
+    -extra_runs: Number of extra runs
+    -total_runs: Total number of runs scored in that delivery
+    -player_dismissed: Batsman who got dismissed
+    -dismissal_kind: Kind of dismissal
+    -fielder: Fielder who made the dismissal (if any)
+    
+## Pre-process the data
+
+```{r}
+matches$date <- as.Date(matches$date, format = "%d/%m/%y")
+```
+
+```{r}
+matches$city <-
+  gsub("Bengaluru",
+       "Bangalore",
+       matches$team1)
+
+matches$team1 <-
+  gsub("Rising Pune Supergiants",
+       "Rising Pune Supergiant",
+       matches$team1)
+matches$team2 <-
+  gsub("Rising Pune Supergiants",
+       "Rising Pune Supergiant",
+       matches$team2)
+matches$winner <-
+  gsub("Rising Pune Supergiants",
+       "Rising Pune Supergiant",
+       matches$winner)
+matches$toss_winner <-
+  gsub("Rising Pune Supergiants",
+       "Rising Pune Supergiant",
+       matches$toss_winner)
+deliveries$batting_team <-
+  gsub("Rising Pune Supergiants",
+       "Rising Pune Supergiant",
+       deliveries$batting_team)
+deliveries$bowling_team <-
+  gsub("Rising Pune Supergiants",
+       "Rising Pune Supergiant",
+       deliveries$bowling_team)
+matches$venue <-
+  gsub("Feroz Shah Kotla Ground", "Feroz Shah Kotla", matches$venue)
+matches$venue <-
+  gsub("M Chinnaswamy Stadium", "M. Chinnaswamy Stadium", matches$venue)
+matches$venue <-
+  gsub("MA Chidambaram Stadium, Chepauk",
+       "M.A. Chidambaram Stadium",
+       matches$venue)
+matches$venue <-
+  gsub("M. A. Chidambaram Stadium",
+       "M.A. Chidambaram Stadium",
+       matches$venue)
+matches$venue <-
+  gsub(
+    "Punjab Cricket Association IS Bindra Stadium, Mohali",
+    "Punjab Cricket Association Stadium",
+    matches$venue
+  )
+matches$venue <-
+  gsub(
+    "Punjab Cricket Association Stadium, Mohali",
+    "Punjab Cricket Association Stadium",
+    matches$venue
+  )
+matches$venue <-
+  gsub("IS Bindra Stadium",
+       "Punjab Cricket Association Stadium",
+       matches$venue)
+matches$venue <-
+  gsub(
+    "Rajiv Gandhi International Stadium, Uppal",
+    "Rajiv Gandhi International Stadium",
+    matches$venue
+  )
+matches$venue <-
+  gsub(
+    "Rajiv Gandhi Intl. Cricket Stadium",
+    "Rajiv Gandhi International Stadium",
+    matches$venue
+  )
+```
+I have converted the date column in the matches.csv file from character to data format. Also, there were inconsistencies among the names of the same teams and venues, and I have tried to make the uniform as well. Further, there are many NA values in the data, but they have significance as it represents that those values don't exist, rather than being existent but unknown.
+
+## Visualizations
+
+```{r}
+# city_matches <- matches %>% 
+#   group_by(city) %>% 
+#   summarise(count = n()) %>% 
+#   arrange(desc(count))
+# 
+# top_10_cities <- head(city_matches, 10)
+# 
+# ggplot(top_10_cities, aes(x = reorder(city, count, FUN = rev), y = count)) +
+#   geom_bar(stat = "identity") +
+#   geom_text(aes(label = count), nudge_y = 3) +
+#   labs(x = "City", y = "Number of matches") +
+#   coord_flip() +
+#   ggtitle("Top 10 Cities with most number of matches played") +
+#   theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+# matches_per_year <- matches %>%
+#   group_by(season) %>%
+#   summarise(count = n())
+# 
+# ggplot(matches_per_year, aes(x = season, y = count)) +
+#   geom_bar(stat = "identity") +
+#   labs(x = "Year", y = "Number of matches") +
+#   ggtitle("Number of IPL matches per year") +
+#   theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+# wins <- matches %>%
+#   count(winner) %>%
+#   rename(name = winner)
+# 
+# ggplot(na.omit(wins), aes(x = reorder(name, n, FUN = rev), y = n, fill = n)) + 
+#   geom_bar(stat = "identity") + 
+#   ggtitle("Total wins by each team") + 
+#   labs(fill = "Runs") + 
+#   xlab("Teams") + 
+#   ylab("Number of Matches Won") + 
+#   theme(plot.title = element_text(hjust = 0.5)) + 
+#   geom_text(aes(label = n), nudge_y = 4) + 
+#   coord_flip()
+```
+
+```{r}
+# batsmen <- merge(matches[c('id', 'season')], deliveries, by.x='id', by.y='match_id')
+# batsmen <- batsmen[, !(names(batsmen) %in% c('id'))]
+# season <- aggregate(total_runs ~ season, data=batsmen, FUN=sum)
+# 
+# avgruns_each_season <- aggregate(id ~ season, data=matches, FUN=length)
+# names(avgruns_each_season) <- c('season', 'matches')
+# avgruns_each_season$total_runs <- season$total_runs
+# avgruns_each_season$average_runs_per_match <- avgruns_each_season$total_runs / avgruns_each_season$matches
+# 
+# ggplot() + 
+#   geom_line(data=avgruns_each_season, aes(x=season, y=average_runs_per_match)) +
+#   xlab("Season") + ylab("Average Runs") +
+#   ggtitle("Average Runs per Season")+
+#    theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+batting_tot <- deliveries %>%
+  group_by(batsman) %>%
+  summarize(runs = sum(batsman_runs)) %>%
+  arrange(desc(runs)) %>%
+  head(10)
+
+plot_ly(batting_tot, x = ~reorder(batsman, runs), y = ~runs, type = 'bar', 
+        text = ~runs, textposition = 'outside', 
+        marker = list(color = 'rgb(158,202,225)', line = list(color = 'rgb(8,48,107)', width = 1.5))) %>%
+  layout(title = 'Top 10 Players with Most Runs', xaxis = list(title = 'Batsman'), yaxis = list(title = 'Number of Runs'))
+
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(plotly)
+
+# join the two data frames
+kohli <- deliveries %>% 
+  inner_join(matches %>% select(id, season), by = c("match_id" = "id")) %>% 
+  select(season, batsman, total_runs)
+
+# calculate runs scored by Kohli per season
+kohli <- kohli %>% 
+  filter(batsman == "V Kohli") %>% 
+  group_by(season) %>% 
+  summarize(runs = sum(total_runs))
+
+# create a line plot
+plot_ly(kohli, x = ~season, y = ~runs, type = "scatter", mode = "lines+markers",
+        marker = list(size = 10), line = list(width = 2)) %>% 
+  layout(title = "Runs Scored by V Kohli per Season",
+         xaxis = list(title = "Season"),
+         yaxis = list(title = "Runs")) 
+```
+
+
+```{r}
+bowling_tot <- deliveries[deliveries$dismissal_kind != 'run out',]
+bowling_tot <- bowling_tot %>%
+  group_by(bowler) %>%
+  summarize(wickets = sum(!is.na(dismissal_kind))) %>%
+  ungroup()
+bowling_tot <- bowling_tot %>% arrange(desc(wickets))
+bowling_tot <- head(bowling_tot, 10)
+
+plot_ly(bowling_tot, x = ~reorder(bowler, wickets), y = ~wickets, type = 'bar',
+        text = ~paste("Wickets: ", wickets)) %>%
+  layout(title = "Top 10 Bowlers with Most Wickets", xaxis = list(title = "Bowler"), 
+         yaxis = list(title = "Number of Wickets"))
+```
+
+```{r}
+malinga_wickets <- deliveries %>%
+  filter(bowler == 'SL Malinga') %>%
+  group_by(match_id) %>%
+  summarize(wickets = sum(!is.na(dismissal_kind))) %>%
+  ungroup() %>%
+  inner_join(matches, by = c("match_id" = "id")) %>%
+  group_by(season) %>%
+  summarize(wickets = sum(wickets))
+
+# Plot line plot for the above
+plot_ly(malinga_wickets, x = ~season, y = ~wickets, type = 'scatter', mode = 'lines+markers',
+        line = list(width = 2)) %>%
+  layout(title = 'SL Malinga Wickets per Season',
+         xaxis = list(title = 'Season'),
+         yaxis = list(title = 'Wickets Taken'))
+```
+
+
+```{r}
+motm <- matches %>%
+  group_by(player_of_match) %>%
+  summarize(`Man of the Match Awards` = n()) %>%
+  arrange(desc(`Man of the Match Awards`)) %>%
+  slice(1:10)
+
+ggplot(motm, aes(x = reorder(player_of_match, `Man of the Match Awards`), y = `Man of the Match Awards`)) +
+  geom_col(fill = "yellow", color = "blue") +
+  geom_text(aes(label = `Man of the Match Awards`), nudge_y = 0.75) +
+  labs(x = "Players", y = "Man of the Match Award Count", title = "Top 10 Players who have won most the Man of the Match trophies") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+dismissals <- deliveries %>%
+  filter(dismissal_kind != "NA") %>%
+  count(dismissal_kind) %>%
+  mutate(percent = round(n/sum(n) * 100, 2))
+
+plot_ly(dismissals, labels = ~dismissal_kind, values = ~n, type = 'pie',
+        textposition = 'inside', 
+        textinfo = 'value', 
+        texttemplate = '%{percent} <br>%{value}') %>%
+  layout(title = 'Distribution of Dismissals in IPL', showlegend = T)
+```
+
+```{r}
+fielders <- deliveries %>%
+  filter(dismissal_kind != "run out" & dismissal_kind != "retired hurt" & dismissal_kind != "NA" & fielder != "NA") %>%
+  group_by(fielder) %>%
+  summarise(dismissals = n()) %>%
+  arrange(desc(dismissals))%>%
+  top_n(10, dismissals)
+
+
+plot_ly(fielders, x = ~reorder(fielder, dismissals), y = ~dismissals, type = 'bar') %>%
+  layout(title = 'Top Fielders by Number of Dismissals', 
+         xaxis = list(title = 'Fielder'), 
+         yaxis = list(title = 'Number of Dismissals'))
+```
+
+
+```{r}
+# Count total runs scored by batting team for innings 1
+inning1_avg <- deliveries %>%
+  filter(inning == 1) %>%
+  group_by(match_id, batting_team) %>%
+  summarize(total_runs = sum(total_runs), .groups = 'drop')
+
+# Calculate average inning 1 score for each team
+inning1_avg <- inning1_avg %>%
+  group_by(batting_team) %>%
+  summarize(avg_score = mean(total_runs), .groups = 'drop')
+
+plot_ly(inning1_avg, labels = ~batting_team, values = ~avg_score, type = 'pie',
+        textposition = 'inside', hole = 0.5, 
+        textinfo = 'label+value', 
+        texttemplate = '%{value:.2f}') %>%
+  layout(title = 'Average Score of Each Team in Inning 1', 
+         showlegend = TRUE)
+```
+
+```{r}
+# Calculate the number of wins for each type of team
+wins <- matches %>%
+  group_by(winner, toss_decision) %>%
+  summarise(n = n(), .groups = 'drop') %>%
+  ungroup() %>%
+  mutate(winning_type = if_else(toss_decision == 'bat', 'Batting First', 'Batting Second'))
+
+# Create the pie chart
+plot_ly(wins, labels = ~winning_type, values = ~n, type = 'pie',
+        textposition = 'inside', 
+        textinfo = 'label+value', 
+        texttemplate = '%{label}: %{value}') %>%
+  layout(title = 'Wins for Batting First vs Batting Second Teams', showlegend = T)
+```
+
+```{r}
+# Count the number of matches won by team winning the toss
+# toss_wins <- matches %>%
+#   filter(result != "no result") %>%
+#   count(winner, toss_winner) %>%
+#   filter(winner == toss_winner) %>%
+#   summarise(total_wins = n())
+# 
+# # Create a pie chart to show the percentage of matches won by the team winning the toss
+# plot_ly(toss_wins, labels = c("Wins when winning toss", "Wins when losing toss"), 
+#         values = c(toss_wins$total_wins, nrow(matches) - toss_wins$total_wins), 
+#         type = 'pie', textinfo = 'percent', textposition = 'inside') %>%
+#   layout(title = "Matches won by team winning the toss")
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Create a new data frame with the number of wins per team per season
+team_wins <- matches %>%
+  group_by(season, winner) %>%
+  summarise(wins = n(), .groups='drop') %>%
+  ungroup()
+
+# Plot the line graph
+ggplot(na.omit(team_wins), aes(x = season, y = wins, color = winner)) +
+  geom_line() +
+  labs(x = "Season",
+       y = "Number of Wins",
+       color = "Team") +
+  ggtitle("Number of Wins per Team per Season") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+```
